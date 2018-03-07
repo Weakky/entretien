@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Posts list</h1>
+
+    <div class="col-xs-12 col-md-offset-2 col-lg-offset-2 col-md-8 col-lg-8">
+        <a class="btn btn-default btn-large" style="margin-bottom: 10px;" href="{{ path('post_new') }}">Create a new post</a>
+        {% for post in posts %}
+            <div class="panel panel-default">
+                <div class="pull-right">
+                    {% if is_granted('edit', post) %}
+                        <a class="btn btn-default btn-sm" href="{{ path('post_edit', { 'id': post.id }) }}">Edit</a>
+                    {% endif %}
+                    {% if is_granted('delete', post) %}
+                        <a class="btn btn-danger btn-sm" href="{{ path('post_delete', { 'id': post.id }) }}">Delete</a>
+                    {% endif %}
+                </div>
+                <div class="panel-heading" style="font-size:16px;font-weight: 600;">
+                    {{ post.title }}
+                </div>
+                <div class="panel-image">
+                    {% if post.imageUrl %}
+                        <img class="panel-image-preview" src="{{ post.imageUrl }}">
+                    {% endif %}
+                    <h4>Summary</h4>
+                </div>
+                <p>{{ post.content }}</p>
+                <div class="panel-footer clearfix">
+                    <span class="badge badge-secondary">
+                        {{ post.comments|length }} Comments
+                    </span>
+                </div>
+                <div class="card-footer text-muted">
+                    {{ render(controller('AppBundle:Post:commentForm', {'id': post.id})) }}
+                </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">Username</th>
+                            <th scope="col">Content</th>
+                            <th scope="col">Time</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for comment in post.comments %}
+                        <tr>
+                            <td>{{ comment.author.username }}</td>
+                            <td>{{ comment.content }}</td>
+                            <td>{{ comment.createdAt|date('Y-m-d') }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
