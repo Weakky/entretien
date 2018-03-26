@@ -2,6 +2,10 @@
 
 namespace AppBundle\Repository;
 
+use AppBundle\Entity\Comment;
+use AppBundle\Entity\Post;
+use AppBundle\Entity\User;
+use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
 
 /**
@@ -12,4 +16,22 @@ use Doctrine\ORM\EntityRepository;
  */
 class CommentRepository extends EntityRepository
 {
+    public function __construct(EntityManager $em)
+    {
+        parent::__construct($em, $em->getClassMetadata(Comment::class));
+    }
+
+    /**
+     * @param Comment $comment
+     * @param Post $post
+     * @param User $author
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function createNewComment(Comment $comment, Post $post, User $author)
+    {
+        $comment->setPost($post);
+        $comment->setAuthor($author);
+        $this->getEntityManager()->persist($comment);
+        $this->getEntityManager()->flush();
+    }
 }

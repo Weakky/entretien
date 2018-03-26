@@ -9,11 +9,13 @@ services:
       tags:
         - { name: security.voter }
 
-    app.tokens.action_listener:
-      class: AppBundle\EventListener\RedirectUserListener
+    repository.post:
+      class: AppBundle\Repository\PostRepository
       arguments:
-          - "@security.token_storage"
-          - "@router"
-      tags:
-          - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+        - "@doctrine.orm.entity_manager"
+
+    repository.comment:
+      class: AppBundle\Repository\CommentRepository
+      arguments:
+        - "@doctrine.orm.entity_manager"
 

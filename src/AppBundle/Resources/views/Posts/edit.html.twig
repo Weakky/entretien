@@ -10,12 +10,14 @@
 
     <ul>
         <li>
-            <a href="{{ path('post_index') }}">Back to the list</a>
+            <a  class="btn btn-default btn-sm" href="{{ path('post_index') }}">
+                Back to the list
+            </a>
         </li>
         <li>
-            {{ form_start(delete_form) }}
-                <input type="submit" value="Delete">
-            {{ form_end(delete_form) }}
+            <a class="btn btn-danger btn-sm" href="/{{ path('post_delete', { 'id': post.id }) }}" type="submit">
+                Delete
+            </a>
         </li>
     </ul>
 {% endblock %}

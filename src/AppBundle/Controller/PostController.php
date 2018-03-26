@@ -5,12 +5,12 @@ namespace AppBundle\Controller;
 use AppBundle\Entity\Comment;
 use AppBundle\Entity\Post;
 use AppBundle\Form\CommentType;
+use AppBundle\Form\PostType;
 use AppBundle\Permissions\PostVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Security\Core\User\UserInterface;
 
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
@@ -22,6 +22,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
  */
 class PostController extends Controller
 {
+
     /**
      * Lists all post entities.
      *
@@ -30,13 +31,11 @@ class PostController extends Controller
      */
     public function indexAction()
     {
-        $em = $this->getDoctrine()->getManager();
+        $posts = $this->get('repository.post')->findAllOrderedByLatest();
 
-        $posts = $em->getRepository(Post::class)->findAllOrderedByLatest();
-
-        return $this->render('AppBundle:Posts:index.html.twig', array(
+        return $this->render('AppBundle:Posts:index.html.twig', [
             'posts' => $posts,
-        ));
+        ]);
     }
 
     /**
@@ -46,26 +45,24 @@ class PostController extends Controller
      * @Method({"GET", "POST"})
      * @param Request $request
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @throws \Doctrine\ORM\OptimisticLockException
      */
     public function newAction(Request $request)
     {
         $post = new Post();
-        $form = $this->createForm('AppBundle\Form\PostType', $post);
+        $form = $this->createForm(PostType::class, $post);
         $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $post->setAuthor($this->getUser());
-            $em->persist($post);
-            $em->flush();
-
+        if ($form->isSubmitted() && $form->isValid())
+        {
+            $this->get('repository.post')->createNewPost($post, $this->getUser());
             return $this->redirectToRoute('post_index');
         }
 
-        return $this->render('AppBundle:Posts:new.html.twig', array(
+        return $this->render('AppBundle:Posts:new.html.twig', [
             'post' => $post,
             'form' => $form->createView(),
-        ));
+        ]);
     }
 
     /**
@@ -76,36 +73,18 @@ class PostController extends Controller
      *
      * @param Request $request
      * @param Post $post
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @throws \Doctrine\ORM\OptimisticLockException
      */
     public function newCommentAction(Request $request, Post $post)
     {
         $comment = new Comment();
-        $comment->setAuthor($this->getUser());
-        $comment->setPost($post);
-
         $form = $this->createForm(CommentType::class, $comment);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
 
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($comment);
-            $em->flush();
-
-            // When triggering an event, you can optionally pass some information.
-            // For simple applications, use the GenericEvent object provided by Symfony
-            // to pass some PHP variables. For more complex applications, define your
-            // own event object classes.
-            // See https://symfony.com/doc/current/components/event_dispatcher/generic_event.html
-            //$event = new GenericEvent($comment);
-
-            // When an event is dispatched, Symfony notifies it to all the listeners
-            // and subscribers registered to it. Listeners can modify the information
-            // passed in the event and they can even modify the execution flow, so
-            // there's no guarantee that the rest of this controller will be executed.
-            // See https://symfony.com/doc/current/components/event_dispatcher.html
-            //$eventDispatcher->dispatch(Events::COMMENT_CREATED, $event);
+            $this->get('repository.comment')->createNewComment($comment, $post, $this->getUser());
 
             return $this->redirectToRoute('post_index');
         }
@@ -150,62 +129,40 @@ class PostController extends Controller
         if (!$this->isGranted(PostVoter::EDIT, $post)) {
             throw new \LogicException("You're not allowed to edit this post.");
         }
-        $deleteForm = $this->createDeleteForm($post);
-        $editForm = $this->createForm('AppBundle\Form\PostType', $post);
+
+        $editForm = $this->createForm(PostType::class, $post);
         $editForm->handleRequest($request);
 
         if ($editForm->isSubmitted() && $editForm->isValid()) {
             $this->getDoctrine()->getManager()->flush();
 
-            return $this->redirectToRoute('post_edit', array('id' => $post->getId()));
+            return $this->redirectToRoute('post_index');
         }
 
-        return $this->render('AppBundle:Posts:edit.html.twig', array(
+        return $this->render('AppBundle:Posts:edit.html.twig', [
             'post' => $post,
             'edit_form' => $editForm->createView(),
-            'delete_form' => $deleteForm->createView(),
-        ));
+        ]);
     }
 
     /**
      * Deletes a post entity.
      *
      * @Route("/{id}", name="post_delete")
-     * @Method("DELETE")
-     * @param Request $request
+     * @Method("GET")
+     *
      * @param Post $post
      * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     * @throws \Doctrine\ORM\OptimisticLockException
      */
-    public function deleteAction(Request $request, Post $post)
+    public function deleteAction(Post $post)
     {
         if (!$this->isGranted(PostVoter::DELETE, $post)) {
             throw new \LogicException("You're not allowed to delete this post.");
         }
-        $form = $this->createDeleteForm($post);
-        $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->remove($post);
-            $em->flush();
-        }
+        $this->get('repository.post')->deletePost($post);
 
         return $this->redirectToRoute('post_index');
-    }
-
-    /**
-     * Creates a form to delete a post entity.
-     *
-     * @param Post $post The post entity
-     *
-     * @return \Symfony\Component\Form\Form The form
-     */
-    private function createDeleteForm(Post $post)
-    {
-        return $this->createFormBuilder()
-            ->setAction($this->generateUrl('post_delete', array('id' => $post->getId())))
-            ->setMethod('DELETE')
-            ->getForm()
-        ;
     }
 }

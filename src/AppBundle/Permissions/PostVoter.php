@@ -24,15 +24,8 @@ class PostVoter extends Voter
      */
     protected function supports($attribute, $subject)
     {
-        if (!in_array($attribute, [self::VIEW, self::EDIT, self::DELETE])) {
-            return false;
-        }
-
-        if (!$subject instanceof Post) {
-            return false;
-        }
-
-        return true;
+        return $subject instanceof Post
+            && in_array($attribute, [self::VIEW, self::EDIT, self::DELETE], true);
     }
 
     /**
@@ -55,10 +48,6 @@ class PostVoter extends Voter
         }
 
         // Check if user is the author of a Post
-        if ($subject->getAuthor() !== $user) {
-            return false;
-        }
-
-        return true;
+        return $subject->getAuthor() === $user;
     }
 }
